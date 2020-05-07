@@ -6,9 +6,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.javadocmd.simplelatlng.LatLng;
 
+import it.polito.tdp.metroparis.model.CoppieFermate;
 import it.polito.tdp.metroparis.model.Fermata;
 import it.polito.tdp.metroparis.model.Linea;
 
@@ -68,5 +70,77 @@ public class MetroDAO {
 		return linee;
 	}
 
+	public boolean fermateConnesse(Fermata p, Fermata a) {
+
+		String sql = "SELECT COUNT(*) as C " + "FROM connessione " + "WHERE id_stazP = ? " + "AND id_stazA = ?";
+
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, p.getIdFermata());
+			st.setInt(2, a.getIdFermata());
+			ResultSet rs = st.executeQuery();
+
+			rs.first(); // va alla prima riga
+			int linee = rs.getInt("C");
+
+			conn.close();
+			return linee >= 1;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Errore di connessione al Database.");
+		}
+	}
+
+	public List<Fermata> fermateSuccessive(Fermata p, Map<Integer, Fermata> fermataId) {
+
+		String sql = "SELECT DISTINCT id_stazA FROM connessione WHERE id_stazP = ?";
+
+		List<Fermata> result = new ArrayList<Fermata>();
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, p.getIdFermata());
+			ResultSet rs = st.executeQuery();
+
+			while (rs.next()) {
+				int idstazA = rs.getInt("id_stazA");
+
+				result.add(fermataId.get(idstazA));
+			}
+			conn.close();
+			return result;
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Errore di connessione al Database.");
+		}
+	}
+
+	public List<CoppieFermate> coppieFermate(Map<Integer, Fermata> fermateIdMap) {
+
+		String sql = "SELECT DISTINCT id_stazP, id_stazA FROM connessione ";
+
+		List<CoppieFermate> result = new ArrayList<>();
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st;
+			st = conn.prepareStatement(sql);
+			ResultSet rs = st.executeQuery();
+			
+			while(rs.next()) {
+				CoppieFermate c = new CoppieFermate(fermateIdMap.get(rs.getInt("id_stazP")), 
+						fermateIdMap.get(rs.getInt("id_stazA")));
+				result.add(c);
+			}
+			conn.close();
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return result;
+	}
 
 }
